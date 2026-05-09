@@ -59,7 +59,7 @@ export default function LogPage() {
   }
 
   return (
-    <div className="space-y-8 animate-fade-in max-w-xl">
+    <div className="space-y-8 animate-fade-in max-w-xl mx-auto">
       <div>
         <p className="text-flame-400 font-mono text-sm mb-1">{todayLabel}</p>
         <h1 className="font-display font-bold text-3xl text-white">Daily check-in</h1>
