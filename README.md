@@ -1,4 +1,4 @@
-# Streakly
+# Streakly 🔥
 
 > Track habits. Build streaks. Stay on fire.
 
