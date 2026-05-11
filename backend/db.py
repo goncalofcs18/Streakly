@@ -9,6 +9,8 @@ client: Optional[AsyncIOMotorClient] = None
 
 
 def get_db():
+    if client is None:
+        raise RuntimeError("Database client is not initialized. Did connect_db run?")
     return client[DB_NAME]
 
 
