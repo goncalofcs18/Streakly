@@ -1,6 +1,9 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
+from bson import ObjectId
 from datetime import date, timedelta
 from db import get_db
+from models.schemas import UserOut
+from auth_utils import get_current_user
 
 router = APIRouter()
 
@@ -42,12 +45,21 @@ def compute_streak(sorted_dates: list[str]) -> dict:
 
 
 @router.get("/heatmap/{habit_id}")
-async def get_heatmap(habit_id: str, days: int = 365):
+async def get_heatmap(habit_id: str, days: int = 365, current_user: UserOut = Depends(get_current_user)):
     """Return a dict of {date: count} for the last N days."""
     db = get_db()
+    
+    # Check if habit belongs to user
+    if not ObjectId.is_valid(habit_id):
+        raise HTTPException(status_code=400, detail="Invalid habit ID")
+    
+    habit = await db.habits.find_one({"_id": ObjectId(habit_id), "user_id": current_user.id})
+    if not habit:
+        raise HTTPException(status_code=404, detail="Habit not found")
+    
     cutoff = (date.today() - timedelta(days=days)).isoformat()
     logs = await db.logs.find(
-        {"habit_id": habit_id, "date": {"$gte": cutoff}}
+        {"habit_id": habit_id, "user_id": current_user.id, "date": {"$gte": cutoff}}
     ).to_list(None)
 
     heatmap = {log["date"]: 1 for log in logs}
@@ -55,26 +67,35 @@ async def get_heatmap(habit_id: str, days: int = 365):
 
 
 @router.get("/streaks/{habit_id}")
-async def get_streaks(habit_id: str):
+async def get_streaks(habit_id: str, current_user: UserOut = Depends(get_current_user)):
     db = get_db()
-    logs = await db.logs.find({"habit_id": habit_id}).to_list(None)
+    
+    # Check if habit belongs to user
+    if not ObjectId.is_valid(habit_id):
+        raise HTTPException(status_code=400, detail="Invalid habit ID")
+    
+    habit = await db.habits.find_one({"_id": ObjectId(habit_id), "user_id": current_user.id})
+    if not habit:
+        raise HTTPException(status_code=404, detail="Habit not found")
+
+    logs = await db.logs.find({"habit_id": habit_id, "user_id": current_user.id}).to_list(None)
     dates = [l["date"] for l in logs]
     streaks = compute_streak(dates)
     return {"habit_id": habit_id, **streaks, "total": len(dates)}
 
 
 @router.get("/summary")
-async def get_summary():
+async def get_summary(current_user: UserOut = Depends(get_current_user)):
     """Dashboard summary: all habits with their streaks and completion rate for last 30 days."""
     db = get_db()
-    habits = await db.habits.find().to_list(100)
+    habits = await db.habits.find({"user_id": current_user.id}).to_list(100)
 
     thirty_days_ago = (date.today() - timedelta(days=30)).isoformat()
     results = []
 
     for habit in habits:
         habit_id = str(habit["_id"])
-        logs = await db.logs.find({"habit_id": habit_id}).to_list(None)
+        logs = await db.logs.find({"habit_id": habit_id, "user_id": current_user.id}).to_list(None)
         dates = [l["date"] for l in logs]
         streaks = compute_streak(dates)
 

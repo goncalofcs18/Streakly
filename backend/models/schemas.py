@@ -3,6 +3,24 @@ from typing import Optional
 from datetime import datetime
 
 
+# ── User models ───────────────────────────────────────────────
+class UserBase(BaseModel):
+    username: str = Field(..., min_length=3, max_length=50)
+
+
+class UserCreate(UserBase):
+    password: str = Field(..., min_length=6)
+
+
+class UserOut(UserBase):
+    id: str
+
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+
 # ── Habit models ──────────────────────────────────────────────
 class HabitCreate(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
@@ -22,6 +40,7 @@ class HabitUpdate(BaseModel):
 
 class HabitOut(BaseModel):
     id: str
+    user_id: str
     name: str
     description: Optional[str]
     color: str
@@ -39,6 +58,7 @@ class LogCreate(BaseModel):
 
 class LogOut(BaseModel):
     id: str
+    user_id: str
     habit_id: str
     date: str
     note: Optional[str]
